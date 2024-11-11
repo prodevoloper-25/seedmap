@@ -35,7 +35,6 @@ MarkupSafe==2.1.5
 mdurl==0.1.2
 multidict==6.0.5
 namex==0.0.8
-numpy==1.26.4
 opencv-python==4.10.0.84
 openpyxl==3.1.5
 opt-einsum==3.3.0

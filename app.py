@@ -9,10 +9,10 @@ import os
 app = Flask(__name__)
 
 # Load the trained model
-model = tf.keras.models.load_model('../models/soil_classification_pretrained_model.h5')
+model = tf.keras.models.load_model('./models/soil_classification_pretrained_model.h5')
 
 # Define the same training directory to get class indices
-train_dir = '../data/train'
+train_dir = './data/train'
 
 # Dummy data generator to get class indices
 train_datagen = ImageDataGenerator(rescale=1.0 / 255.0)
@@ -76,6 +76,5 @@ def predict():
 # Run the app
 if __name__ == '__main__':
     # Ensure the 'temp' directory exists
-    if not os.path.exists('temp'):
-        os.makedirs('temp')
-    app.run(host='0.0.0.0', port=5000)
+    
+    app.run(debug=True)

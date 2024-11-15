@@ -1,20 +1,18 @@
 from flask import Flask, request, jsonify
 import tensorflow as tf
 import numpy as np
-import cv2
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import base64
+from io import BytesIO
+from PIL import Image
 import os
 
-# Initialize Flask app
 app = Flask(__name__)
 
-# Load the trained model
+# Load your trained model
 model = tf.keras.models.load_model('./models/soil_classification_pretrained_model.h5')
 
-# Define the same training directory to get class indices
-train_dir = './data/train'
-
 # Dummy data generator to get class indices
+train_dir = './data/train'
 train_datagen = ImageDataGenerator(rescale=1.0 / 255.0)
 train_generator = train_datagen.flow_from_directory(
     train_dir,
@@ -27,12 +25,12 @@ train_generator = train_datagen.flow_from_directory(
 class_indices = train_generator.class_indices
 soil_types = list(class_indices.keys())
 
-
 # Function to preprocess and predict soil type
-def predict_soil_type(image_path):
-    # Load and preprocess the image
-    image = cv2.imread(image_path)
-    image = cv2.resize(image, (224, 224))
+def predict_soil_type(base64_image):
+    # Decode the base64 image
+    image_data = base64.b64decode(base64_image)
+    image = Image.open(BytesIO(image_data)).convert('RGB')
+    image = image.resize((224, 224))
     image = np.array(image) / 255.0
     image = np.expand_dims(image, axis=0)
 
@@ -42,39 +40,29 @@ def predict_soil_type(image_path):
     confidence = predictions[0][predicted_class] * 100
     return soil_types[predicted_class], confidence
 
-
 # Route for predicting soil type
 @app.route('/predict_soil', methods=['POST'])
 def predict():
-    # Check if an image file was uploaded
-    if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+    # Get JSON data
+    data = request.get_json()
+    if 'image' not in data:
+        return jsonify({"error": "No image data provided"}), 400
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No file selected"}), 400
-
-    # Save the file to a temporary location
-    file_path = os.path.join('temp', file.filename)
-    file.save(file_path)
+    base64_image = data['image']
 
     try:
         # Perform prediction
-        soil_type, confidence = predict_soil_type(file_path)
+        soil_type, confidence = predict_soil_type(base64_image)
         result = {
             "Predicted Soil Type": soil_type,
             "Confidence": f"{confidence:.2f}%"
         }
-    finally:
-        # Clean up: remove the temporary file after prediction
-        os.remove(file_path)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
     # Return the result as JSON
     return jsonify(result)
 
-
 # Run the app
 if __name__ == '__main__':
-    # Ensure the 'temp' directory exists
-    
     app.run(debug=True)

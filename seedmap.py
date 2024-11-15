@@ -41,14 +41,14 @@ def predict_soil_type(base64_image):
     return soil_types[predicted_class], confidence
 
 # Route for predicting soil type
-@app.route('/predict_soil', methods=['POST'])
+@app.route('/predict_soil/<base_var>', methods=['POST'])
 def predict():
     # Get JSON data
-    data = request.get_json()
-    if 'image' not in data:
-        return jsonify({"error": "No image data provided"}), 400
+    # data = request.get_json()
+    # if 'image' not in data:
+    #     return jsonify({"error": "No image data provided"}), 400
 
-    base64_image = data['image']
+    base64_image = base_var
 
     try:
         # Perform prediction

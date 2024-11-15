@@ -4,3 +4,4 @@ opencv_python
 Requests
 tensorflow
 tensorflow_intel
+gunicorn

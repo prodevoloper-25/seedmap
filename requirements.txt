@@ -1,7 +1,7 @@
 Flask
-numpy
-opencv_python
-Requests
 tensorflow
-tensorflow_intel
+opencv-python
+numpy
+requests
+Pillow
 gunicorn

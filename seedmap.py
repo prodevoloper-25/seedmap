@@ -108,9 +108,14 @@ app = Flask(__name__)
 #     }
 #     return jsonify(result)
 
-@app.route('/')
+@app.route('/',methods=['POST'])
 def hello():
-  return "Hello World"
+  data = request.get_json()
+  a = int(data['image'])
+  b = int(data['lat'])
+  c = int(data['lon'])
+  d = a+b+c
+  return d
 
 
 

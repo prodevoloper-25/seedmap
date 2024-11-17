@@ -113,7 +113,7 @@ def hello():
    num1 = float(request.args.get('num1', 0))
    num2 = float(request.args.get('num2', 0))
    num3 = float(request.args.get('num3', 0))
-   d = num1+num2+num3
+   d = int(num1+num2+num3)
    return jsonify({"sum":d})
 
 

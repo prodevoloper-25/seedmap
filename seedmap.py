@@ -73,10 +73,21 @@ def find_suitable_crops(temperature, soil_type):
 # Route to predict soil type and recommend crops
 @app.route('/predict', methods=['GET'])
 def predict_and_recommend():
-   
-    image_data = request.args.get('image_data', 0)
-    latitude = request.args.get('latitude', 0)
-    longitude = request.args.get('longitude',0)
+    # Retrieve request parameters
+    image_data = request.args.get('image_data')
+    latitude = request.args.get('latitude')
+    longitude = request.args.get('longitude')
+
+    # Check if all parameters are provided
+    if not image_data or not latitude or not longitude:
+        return jsonify({"error": "Missing required parameters: image_data, latitude, and longitude"}), 400
+
+    # Convert latitude and longitude to floats
+    try:
+        latitude = float(latitude)
+        longitude = float(longitude)
+    except ValueError:
+        return jsonify({"error": "Invalid latitude or longitude values"}), 400
 
     # Get the weather data
     weather_api_key = '338334a0dcbd49acb1b3dd06d9ec26f2'
@@ -85,8 +96,15 @@ def predict_and_recommend():
         "lon": longitude,
         "key": weather_api_key
     })
+
+    if weather_response.status_code != 200:
+        return jsonify({"error": "Failed to retrieve weather data"}), 500
+
     weather_data = weather_response.json()
-    temperature = weather_data["data"][0]["app_temp"]
+    temperature = weather_data.get("data", [{}])[0].get("app_temp")
+    
+    if temperature is None:
+        return jsonify({"error": "Could not retrieve temperature data"}), 500
 
     # Predict soil type
     soil_type, confidence = predict_soil_type(image_data)
@@ -102,6 +120,7 @@ def predict_and_recommend():
         "Crop": recommended_crops
     }
     return jsonify(result)
+
 
 # @app.route('/sum',methods=['GET'])
 # def hello():

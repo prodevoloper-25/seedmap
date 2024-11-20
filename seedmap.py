@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify
 import tensorflow as tf
 import numpy as np
@@ -7,6 +8,7 @@ import requests
 import base64
 from io import BytesIO
 from PIL import Image
+from urllib.parse import unquote
 
 app = Flask(__name__)
 
@@ -29,7 +31,7 @@ soil_types = list(class_indices.keys())
 
 # Crop data dictionary
 crop_data = {
-    "Wheat": {"temperature_range": (10, 25), "soil_type": ["clay", "loamy", "chalky"]},
+   "Wheat": {"temperature_range": (10, 25), "soil_type": ["clay", "loamy", "chalky"]},
     "Rice": {"temperature_range": (20, 35), "soil_type": ["clay", "silt"]},
     "Maize": {"temperature_range": (18, 27), "soil_type": ["loamy", "sandy", "silt"]},
     "Sugarcane": {"temperature_range": (20, 30), "soil_type": ["loamy", "clay"]},
@@ -49,16 +51,23 @@ crop_data = {
 
 # Function to preprocess and predict soil type
 def predict_soil_type(image_data):
-    image = Image.open(BytesIO(base64.b64decode(image_data))).convert('RGB')
-    image = image.resize((224, 224))
-    image = np.array(image) / 255.0
-    image = np.expand_dims(image, axis=0)
+    try:
+        # Decode and preprocess the image
+        decoded_image = base64.b64decode(image_data)
+        image = Image.open(BytesIO(decoded_image)).convert('RGB')
+        image = image.resize((224, 224))
+        image = np.array(image) / 255.0
+        image = np.expand_dims(image, axis=0)
 
-    predictions = model.predict(image)
-    predicted_class = np.argmax(predictions)
-    confidence = predictions[0][predicted_class] * 100
-    soil_type = soil_types[predicted_class]
-    return soil_type, confidence
+        # Model prediction
+        predictions = model.predict(image)
+        predicted_class = np.argmax(predictions)
+        confidence = predictions[0][predicted_class] * 100
+        soil_type = soil_types[predicted_class]
+        return soil_type, confidence
+    except (base64.binascii.Error, Image.UnidentifiedImageError) as e:
+        app.logger.error(f"Error decoding or processing image: {str(e)}")
+        raise ValueError("Invalid image data")
 
 # Function to find suitable crops
 def find_suitable_crops(temperature, soil_type):
@@ -78,36 +87,39 @@ def predict_and_recommend():
     latitude = request.args.get('latitude')
     longitude = request.args.get('longitude')
 
-    # Check if all parameters are provided
+    # Validate inputs
     if not image_data or not latitude or not longitude:
         return jsonify({"error": "Missing required parameters: image_data, latitude, and longitude"}), 400
 
-    # Convert latitude and longitude to floats
     try:
         latitude = float(latitude)
         longitude = float(longitude)
     except ValueError:
         return jsonify({"error": "Invalid latitude or longitude values"}), 400
 
+    try:
+        # Decode the image data (handle URL encoding)
+        image_data = unquote(image_data)
+        soil_type, confidence = predict_soil_type(image_data)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     # Get the weather data
     weather_api_key = '338334a0dcbd49acb1b3dd06d9ec26f2'
-    weather_response = requests.get("https://api.weatherbit.io/v2.0/current", params={
-        "lat": latitude,
-        "lon": longitude,
-        "key": weather_api_key
-    })
-
-    if weather_response.status_code != 200:
+    try:
+        weather_response = requests.get(
+            "https://api.weatherbit.io/v2.0/current",
+            params={"lat": latitude, "lon": longitude, "key": weather_api_key}
+        )
+        weather_response.raise_for_status()
+        weather_data = weather_response.json()
+        temperature = weather_data.get("data", [{}])[0].get("app_temp")
+    except (requests.RequestException, KeyError) as e:
+        app.logger.error(f"Weather API error: {str(e)}")
         return jsonify({"error": "Failed to retrieve weather data"}), 500
 
-    weather_data = weather_response.json()
-    temperature = weather_data.get("data", [{}])[0].get("app_temp")
-    
     if temperature is None:
         return jsonify({"error": "Could not retrieve temperature data"}), 500
-
-    # Predict soil type
-    soil_type, confidence = predict_soil_type(image_data)
 
     # Find suitable crops
     recommended_crops = find_suitable_crops(temperature, soil_type)
@@ -117,20 +129,14 @@ def predict_and_recommend():
         "Predicted Soil Type": soil_type,
         "Confidence": f"{confidence:.2f}%",
         "Current Temperature": temperature,
-        "Crop": recommended_crops
+        "Recommended Crops": recommended_crops
     }
     return jsonify(result)
 
-
-# @app.route('/sum',methods=['GET'])
-# def hello():
-#    num1 = float(request.args.get('num1', 0))
-#    num2 = float(request.args.get('num2', 0))
-#    num3 = float(request.args.get('num3', 0))
-#    d = int(num1+num2+num3)
-#    return jsonify({"sum":d})
-
-
+# Optional root route for testing
+@app.route('/')
+def home():
+    return jsonify({"message": "API is live and running"}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)

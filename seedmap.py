@@ -2,36 +2,22 @@
 from flask import Flask, request, jsonify
 import tensorflow as tf
 import numpy as np
-import cv2
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import requests
+from PIL import Image, UnidentifiedImageError
 import base64
 from io import BytesIO
-from PIL import Image
 from urllib.parse import unquote
+import requests
 
 app = Flask(__name__)
 
 # Load the trained model
-model = tf.keras.models.load_model('./models/soil_classification_pretrained_model.h5')
+MODEL_PATH = './models/soil_classification_pretrained_model.h5'
+model = tf.keras.models.load_model(MODEL_PATH)
 
-# Define the training directory to get class indices
-train_dir = './data/train'
-train_datagen = ImageDataGenerator(rescale=1.0 / 255.0)
-train_generator = train_datagen.flow_from_directory(
-    train_dir,
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical'
-)
-
-# Class indices for soil types
-class_indices = train_generator.class_indices
-soil_types = list(class_indices.keys())
-
-# Crop data dictionary
-crop_data = {
-   "Wheat": {"temperature_range": (10, 25), "soil_type": ["clay", "loamy", "chalky"]},
+# Soil types and crop recommendations
+SOIL_TYPES = ["clay", "loamy", "sandy", "chalky", "silt"]  # Example soil types
+CROP_DATA = {
+    "Wheat": {"temperature_range": (10, 25), "soil_type": ["clay", "loamy", "chalky"]},
     "Rice": {"temperature_range": (20, 35), "soil_type": ["clay", "silt"]},
     "Maize": {"temperature_range": (18, 27), "soil_type": ["loamy", "sandy", "silt"]},
     "Sugarcane": {"temperature_range": (20, 30), "soil_type": ["loamy", "clay"]},
@@ -49,94 +35,113 @@ crop_data = {
     "Chili Pepper": {"temperature_range": (20, 30), "soil_type": ["loamy", "sandy"]},
 }
 
-# Function to preprocess and predict soil type
-def predict_soil_type(image_data):
-    try:
-        # Decode and preprocess the image
-        decoded_image = base64.b64decode(image_data)
-        image = Image.open(BytesIO(decoded_image)).convert('RGB')
-        image = image.resize((224, 224))
-        image = np.array(image) / 255.0
-        image = np.expand_dims(image, axis=0)
+WEATHER_API_KEY = "338334a0dcbd49acb1b3dd06d9ec26f2"
+WEATHER_API_URL = "https://api.weatherbit.io/v2.0/current"
 
-        # Model prediction
-        predictions = model.predict(image)
-        predicted_class = np.argmax(predictions)
-        confidence = predictions[0][predicted_class] * 100
-        soil_type = soil_types[predicted_class]
-        return soil_type, confidence
-    except (base64.binascii.Error, Image.UnidentifiedImageError) as e:
-        app.logger.error(f"Error decoding or processing image: {str(e)}")
+
+def preprocess_image(image_data):
+    """
+    Decodes a Base64 image, preprocesses it, and returns the ready-to-predict tensor.
+    """
+    try:
+        decoded_image = base64.b64decode(image_data)
+        image = Image.open(BytesIO(decoded_image)).convert("RGB")
+        image = image.resize((224, 224))
+        image_array = np.array(image) / 255.0  # Normalize
+        return np.expand_dims(image_array, axis=0)
+    except (base64.binascii.Error, UnidentifiedImageError) as e:
+        app.logger.error(f"Error decoding or processing image: {e}")
         raise ValueError("Invalid image data")
 
-# Function to find suitable crops
-def find_suitable_crops(temperature, soil_type):
-    suitable_crops = []
-    for crop, requirements in crop_data.items():
-        temp_range = requirements["temperature_range"]
-        soil_types = requirements["soil_type"]
-        if temp_range[0] <= temperature <= temp_range[1] and soil_type in soil_types:
-            suitable_crops.append(crop)
-    return suitable_crops
 
-# Route to predict soil type and recommend crops
+def predict_soil_type(image_tensor):
+    """
+    Predicts the soil type using the model.
+    """
+    predictions = model.predict(image_tensor)
+    predicted_index = np.argmax(predictions)
+    confidence = predictions[0][predicted_index] * 100
+    soil_type = SOIL_TYPES[predicted_index]
+    return soil_type, confidence
+
+
+def get_weather_data(latitude, longitude):
+    """
+    Retrieves the current temperature using the Weatherbit API.
+    """
+    try:
+        response = requests.get(
+            WEATHER_API_URL,
+            params={"lat": latitude, "lon": longitude, "key": WEATHER_API_KEY},
+        )
+        response.raise_for_status()
+        weather_data = response.json()
+        return weather_data.get("data", [{}])[0].get("app_temp")
+    except (requests.RequestException, KeyError) as e:
+        app.logger.error(f"Weather API error: {e}")
+        raise RuntimeError("Failed to retrieve weather data")
+
+
+def recommend_crops(temperature, soil_type):
+    """
+    Recommends crops based on temperature and soil type.
+    """
+    recommended = []
+    for crop, data in CROP_DATA.items():
+        temp_range = data["temperature_range"]
+        if temp_range[0] <= temperature <= temp_range[1] and soil_type in data["soil_type"]:
+            recommended.append(crop)
+    return recommended
+
+
 @app.route('/predict', methods=['GET'])
 def predict_and_recommend():
-    # Retrieve request parameters
+    """
+    Main endpoint for predicting soil type and recommending crops.
+    """
+    # Extract query parameters
     image_data = request.args.get('image_data')
     latitude = request.args.get('latitude')
     longitude = request.args.get('longitude')
 
-    # Validate inputs
     if not image_data or not latitude or not longitude:
-        return jsonify({"error": "Missing required parameters: image_data, latitude, and longitude"}), 400
+        return jsonify({"error": "Missing required parameters: image_data, latitude, longitude"}), 400
 
     try:
-        latitude = float(latitude)
-        longitude = float(longitude)
-    except ValueError:
-        return jsonify({"error": "Invalid latitude or longitude values"}), 400
-
-    try:
-        # Decode the image data (handle URL encoding)
+        # Decode image data
         image_data = unquote(image_data)
-        soil_type, confidence = predict_soil_type(image_data)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        image_tensor = preprocess_image(image_data)
 
-    # Get the weather data
-    weather_api_key = '338334a0dcbd49acb1b3dd06d9ec26f2'
-    try:
-        weather_response = requests.get(
-            "https://api.weatherbit.io/v2.0/current",
-            params={"lat": latitude, "lon": longitude, "key": weather_api_key}
-        )
-        weather_response.raise_for_status()
-        weather_data = weather_response.json()
-        temperature = weather_data.get("data", [{}])[0].get("app_temp")
-    except (requests.RequestException, KeyError) as e:
-        app.logger.error(f"Weather API error: {str(e)}")
-        return jsonify({"error": "Failed to retrieve weather data"}), 500
+        # Predict soil type
+        soil_type, confidence = predict_soil_type(image_tensor)
 
-    if temperature is None:
-        return jsonify({"error": "Could not retrieve temperature data"}), 500
+        # Get temperature from weather API
+        temperature = get_weather_data(float(latitude), float(longitude))
+        if temperature is None:
+            raise RuntimeError("Temperature data not available")
 
-    # Find suitable crops
-    recommended_crops = find_suitable_crops(temperature, soil_type)
+        # Recommend crops
+        crops = recommend_crops(temperature, soil_type)
 
-    # Return the result
-    result = {
-        "Predicted Soil Type": soil_type,
-        "Confidence": f"{confidence:.2f}%",
-        "Current Temperature": temperature,
-        "Recommended Crops": recommended_crops
-    }
-    return jsonify(result)
+        # Construct response
+        response = {
+            "Predicted Soil Type": soil_type,
+            "Confidence": f"{confidence:.2f}%",
+            "Current Temperature": temperature,
+            "Recommended Crops": crops,
+        }
+        return jsonify(response)
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except RuntimeError as re:
+        return jsonify({"error": str(re)}), 500
 
-# Optional root route for testing
+
 @app.route('/')
 def home():
-    return jsonify({"message": "API is live and running"}), 200
+    return jsonify({"message": "API is live"}), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True)
+

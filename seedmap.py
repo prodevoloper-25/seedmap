@@ -187,7 +187,7 @@ def predict_and_recommend():
             "Predicted Soil Type": "Loamy",
             "Confidence": "90.5%",
             "Current Temperature": 25.0,
-            "Recommended Crops": ["Wheat", "Maize", "Rice"]
+            "Recommended_Crops": ["Wheat", "Maize", "Rice"]
         }
         return jsonify(result), 200
 

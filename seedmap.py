@@ -169,18 +169,18 @@ def predict_and_recommend():
         latitude = data.get('latitude')
         longitude = data.get('longitude')
 
-        # Validate inputs
-        if not image_data or latitude is None or longitude is None:
-            return jsonify({"error": "Missing required parameters"}), 400
+        # # Validate inputs
+        # if not image_data or latitude is None or longitude is None:
+        #     return jsonify({"error": "Missing required parameters"}), 400
 
-        # Decode Base64 image
-        decoded_image = base64.b64decode(image_data)
-        image = Image.open(BytesIO(decoded_image)).convert("RGB")
+        # # Decode Base64 image
+        # decoded_image = base64.b64decode(image_data)
+        # image = Image.open(BytesIO(decoded_image)).convert("RGB")
 
-        # Preprocess image (resize, normalize, etc.) for model
-        image = image.resize((224, 224))
-        image_array = np.array(image) / 255.0
-        image_array = np.expand_dims(image_array, axis=0)
+        # # Preprocess image (resize, normalize, etc.) for model
+        # image = image.resize((224, 224))
+        # image_array = np.array(image) / 255.0
+        # image_array = np.expand_dims(image_array, axis=0)
 
         # Dummy response (replace with model prediction and crop recommendation)
         result = {
@@ -191,10 +191,10 @@ def predict_and_recommend():
         }
         return jsonify(result), 200
 
-    except (base64.binascii.Error, UnidentifiedImageError) as e:
-        return jsonify({"error": f"Invalid image data: {str(e)}"}), 400
-    except Exception as e:
-        return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
+    # except (base64.binascii.Error, UnidentifiedImageError) as e:
+    #     return jsonify({"error": f"Invalid image data: {str(e)}"}), 400
+    # except Exception as e:
+    #     return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

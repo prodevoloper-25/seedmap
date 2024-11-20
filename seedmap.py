@@ -44,14 +44,22 @@ def preprocess_image(image_data):
     Decodes a Base64 image, preprocesses it, and returns the ready-to-predict tensor.
     """
     try:
+        # Decode the Base64 string
         decoded_image = base64.b64decode(image_data)
+    except Exception as e:
+        app.logger.error(f"Base64 decoding failed: {e}")
+        raise ValueError("Invalid Base64 image data")
+    
+    try:
+        # Convert the decoded bytes into an image
         image = Image.open(BytesIO(decoded_image)).convert("RGB")
         image = image.resize((224, 224))
         image_array = np.array(image) / 255.0  # Normalize
         return np.expand_dims(image_array, axis=0)
-    except (base64.binascii.Error, UnidentifiedImageError) as e:
-        app.logger.error(f"Error decoding or processing image: {e}")
-        raise ValueError("Invalid image data")
+    except UnidentifiedImageError as e:
+        app.logger.error(f"Image processing failed: {e}")
+        raise ValueError("Image could not be identified or processed")
+
 
 
 def predict_soil_type(image_tensor):

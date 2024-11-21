@@ -11,7 +11,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def upload_file():
     # Check if the request contains the file and the other data
     if 'file' not in request.files:
-        return jsonify({"text":"No file part")
+        return jsonify({"text":"No file part"})
 
     # Check for latitude and longitude in the form data
     latitude = request.form.get('latitude')

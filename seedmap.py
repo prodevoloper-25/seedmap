@@ -152,51 +152,45 @@
 
 # if __name__ == '__main__':
 #     app.run(debug=True)
-from flask import Flask, request, jsonify
-import base64
-from io import BytesIO
-from PIL import Image, UnidentifiedImageError
-import numpy as np
+from flask import Flask, request
+import os
 
 app = Flask(__name__)
 
+# Path to save uploaded images
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 @app.route('/predict', methods=['POST'])
-def predict_and_recommend():
-    try:
-        # Parse JSON body
-        data = request.json
-        image_data = data.get('image_data')
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
+def upload_file():
+    # Check if the request contains the file and the other data
+    if 'file' not in request.files:
+        return 'No file part', 400
 
-        # # Validate inputs
-        # if not image_data or latitude is None or longitude is None:
-        #     return jsonify({"error": "Missing required parameters"}), 400
+    # Check for latitude and longitude in the form data
+    latitude = request.form.get('latitude')
+    longitude = request.form.get('longitude')
+    
+    if latitude is None or longitude is None:
+        return 'Latitude and longitude are required', 400
+    
+    # Get the image file from the request
+    file = request.files['file']
+    
+    # Check if the file has a valid name (not empty)
+    if file.filename == '':
+        return 'No selected file', 400
 
-        # # Decode Base64 image
-        # decoded_image = base64.b64decode(image_data)
-        # image = Image.open(BytesIO(decoded_image)).convert("RGB")
-
-        # # Preprocess image (resize, normalize, etc.) for model
-        # image = image.resize((224, 224))
-        # image_array = np.array(image) / 255.0
-        # image_array = np.expand_dims(image_array, axis=0)
-
-        # Dummy response (replace with model prediction and crop recommendation)
-        result = {
-            "Predicted Soil Type": "Loamy",
-            "Confidence": "90.5%",
-            "Current Temperature": 25.0,
-            "Recommended_Crops": ["Wheat", "Maize", "Rice"]
-        }
-        return jsonify(result), 200
-
-    # except (base64.binascii.Error, UnidentifiedImageError) as e:
-    #     return jsonify({"error": f"Invalid image data: {str(e)}"}), 400
-    # except Exception as e:
-    #     return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
+    # Save the file to the server
+    filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    file.save(filename)
+    
+    # Process latitude, longitude, and the file
+    # For example, just print them to confirm data receipt
+    print(f"Received file: {filename}")
+    print(f"Latitude: {latitude}, Longitude: {longitude}")
+    
+    return 'File successfully uploaded with coordinates', 200
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-

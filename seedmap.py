@@ -7,7 +7,7 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-@app.route('/predict', methods=['POST'])
+@app.route('/upload', methods=['POST'])
 def upload_file():
     # Check if the request contains the file and the other data
     if 'file' not in request.files:

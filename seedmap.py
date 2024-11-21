@@ -36,7 +36,7 @@ def upload_file():
     print(f"Received file: {filename}")
     print(f"Latitude: {latitude}, Longitude: {longitude}")
     
-    return 'File successfully uploaded with coordinates', 200
+    return jsonify({"text": "File Uploaded"})
 
 if __name__ == '__main__':
     app.run(debug=True)

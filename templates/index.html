@@ -11,11 +11,11 @@
     <script>
         let cameraStream;
 
-        // Start the camera
+        // Start the camera with the front-facing mode
         function startCamera() {
             const video = document.getElementById("video");
             navigator.mediaDevices
-                .getUserMedia({ video: true })
+                .getUserMedia({ video: { facingMode: "user" } })
                 .then((stream) => {
                     cameraStream = stream;
                     video.srcObject = stream;
@@ -25,7 +25,14 @@
                 });
         }
 
-        // Capture the image from the video feed
+        // Stop the camera
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach((track) => track.stop());
+            }
+        }
+
+        // Capture image from the video feed
         function captureImage() {
             const video = document.getElementById("video");
             const canvas = document.getElementById("canvas");
@@ -48,15 +55,12 @@
             // Store the image data URL in a hidden input field
             document.getElementById("imageData").value = imageDataURL;
 
-            // Stop the camera after capturing
-            stopCamera();
-        }
+            // Hide the video feed and show preview
+            document.getElementById("video").style.display = "none";
+            document.getElementById("captureControls").style.display = "none";
+            document.getElementById("submitControls").style.display = "block";
 
-        // Stop the camera
-        function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach((track) => track.stop());
-            }
+            stopCamera();
         }
 
         // Get the user's geolocation
@@ -88,10 +92,10 @@
             const formData = new FormData();
 
             if (imageData) {
-                // If captured image, use the base64 image
+                // Captured image
                 formData.append("image_data", imageData);
             } else if (fileInput.files[0]) {
-                // If uploaded image, use the file
+                // Uploaded image
                 formData.append("file", fileInput.files[0]);
             } else {
                 alert("Please capture or upload an image.");
@@ -110,41 +114,65 @@
                     if (data.error) {
                         alert(data.error);
                     } else {
+                        // Display organized output
                         document.getElementById("output").innerHTML = `
-                            <h5 class="text-success">Success!</h5>
+                            <h5 class="text-success">Submission Successful!</h5>
                             <p>Latitude: ${data.latitude}</p>
                             <p>Longitude: ${data.longitude}</p>
-                            <img src="${data.file_path}" alt="Uploaded Image" class="img-fluid">
+                            <img src="${data.file_path}" alt="Uploaded Image" class="img-fluid mt-3">
+                            <button class="btn btn-primary mt-3" onclick="resetForm()">Click Again</button>
                         `;
+
+                        // Hide form elements after submission
+                        document.getElementById("formSection").style.display = "none";
                     }
                 });
+        }
+
+        // Reset the form for a new capture/upload
+        function resetForm() {
+            document.getElementById("output").innerHTML = "";
+            document.getElementById("formSection").style.display = "block";
+            document.getElementById("video").style.display = "block";
+            document.getElementById("preview").style.display = "none";
+            document.getElementById("captureControls").style.display = "block";
+            document.getElementById("submitControls").style.display = "none";
+            document.getElementById("fileInput").value = "";
+            document.getElementById("imageData").value = "";
+            startCamera();
         }
     </script>
 </head>
 <body onload="startCamera()" class="bg-light">
     <div class="container py-5">
         <h1 class="text-center mb-4">Capture or Upload Picture</h1>
-        <div class="row">
-            <!-- Camera Section -->
-            <div class="col-md-6">
-                <h3>Capture Image</h3>
-                <video id="video" class="w-100 border" autoplay></video>
-                <button class="btn btn-primary mt-3" onclick="captureImage()">Capture</button>
-                <canvas id="canvas" style="display:none;"></canvas>
-                <img id="preview" class="img-fluid mt-3" alt="Captured Image" style="display:none;">
-                <input type="hidden" id="imageData">
+
+        <!-- Form Section -->
+        <div id="formSection">
+            <div class="row">
+                <!-- Camera Section -->
+                <div class="col-md-6">
+                    <h3>Capture Image</h3>
+                    <video id="video" class="w-100 border" autoplay></video>
+                    <div id="captureControls" class="mt-3">
+                        <button class="btn btn-primary" onclick="captureImage()">Capture</button>
+                    </div>
+                    <canvas id="canvas" style="display:none;"></canvas>
+                    <img id="preview" class="img-fluid mt-3" alt="Captured Image" style="display:none;">
+                    <input type="hidden" id="imageData">
+                </div>
+
+                <!-- Upload Section -->
+                <div class="col-md-6">
+                    <h3>Upload Image</h3>
+                    <input type="file" id="fileInput" class="form-control mb-3" accept="image/*">
+                </div>
             </div>
 
-            <!-- Upload Section -->
-            <div class="col-md-6">
-                <h3>Upload Image</h3>
-                <input type="file" id="fileInput" class="form-control mb-3" accept="image/*">
+            <!-- Submit Button -->
+            <div id="submitControls" class="text-center mt-4" style="display:none;">
+                <button class="btn btn-success" onclick="uploadImage()">Submit</button>
             </div>
-        </div>
-
-        <!-- Submit Button -->
-        <div class="text-center mt-4">
-            <button class="btn btn-success" onclick="uploadImage()">Submit</button>
         </div>
 
         <!-- Output Section -->
@@ -152,5 +180,4 @@
     </div>
 </body>
 </html>
-
 

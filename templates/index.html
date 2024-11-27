@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture or Upload Picture</title>
+    <script>
+        let cameraStream;
+
+        // Function to start the camera
+        function startCamera() {
+            const video = document.getElementById("video");
+            navigator.mediaDevices
+                .getUserMedia({ video: true })
+                .then((stream) => {
+                    cameraStream = stream;
+                    video.srcObject = stream;
+                })
+                .catch((err) => {
+                    alert("Unable to access the camera: " + err.message);
+                });
+        }
+
+        // Function to capture an image from the video stream
+        function captureImage() {
+            const video = document.getElementById("video");
+            const canvas = document.getElementById("canvas");
+            const context = canvas.getContext("2d");
+
+            // Draw the current frame from the video on the canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert the canvas to a data URL
+            const imageDataURL = canvas.toDataURL("image/png");
+            document.getElementById("preview").src = imageDataURL;
+            document.getElementById("imageData").value = imageDataURL;
+
+            stopCamera();
+        }
+
+        // Function to stop the camera
+        function stopCamera() {
+            if (cameraStream) {
+                const tracks = cameraStream.getTracks();
+                tracks.forEach((track) => track.stop());
+            }
+        }
+
+        // Function to get geolocation
+        async function getGeolocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    alert("Geolocation is not supported by your browser.");
+                    return reject();
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (position) =>
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                        }),
+                    () => {
+                        alert("Unable to retrieve your location.");
+                        reject();
+                    }
+                );
+            });
+        }
+
+        // Function to upload the captured or uploaded image
+        async function uploadImage() {
+            const imageData = document.getElementById("imageData").value;
+            const fileInput = document.getElementById("fileInput");
+
+            const position = await getGeolocation();
+            const formData = new FormData();
+            if (imageData) {
+                // If an image is captured, send it
+                formData.append("file", dataURLtoBlob(imageData), "captured_image.png");
+            } else if (fileInput.files[0]) {
+                // If an image is uploaded, send it
+                formData.append("file", fileInput.files[0]);
+            } else {
+                alert("Please capture or upload an image.");
+                return;
+            }
+
+            formData.append("latitude", position.latitude);
+            formData.append("longitude", position.longitude);
+
+            fetch("/upload", {
+                method: "POST",
+                body: formData,
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        document.getElementById("output").innerHTML = `
+                            <h3>File Uploaded Successfully</h3>
+                            <p>Latitude: ${data.latitude}</p>
+                            <p>Longitude: ${data.longitude}</p>
+                            <img src="${data.file_path}" alt="Uploaded Image" style="max-width:100%;">
+                        `;
+                    }
+                });
+        }
+
+        // Convert data URL to Blob
+        function dataURLtoBlob(dataURL) {
+            const [header, base64] = dataURL.split(",");
+            const mime = header.match(/:(.*?);/)[1];
+            const binary = atob(base64);
+            const array = [];
+            for (let i = 0; i < binary.length; i++) {
+                array.push(binary.charCodeAt(i));
+            }
+            return new Blob([new Uint8Array(array)], { type: mime });
+        }
+    </script>
+</head>
+<body>
+    <h1>Capture or Upload Picture</h1>
+
+    <!-- Camera Stream -->
+    <div>
+        <video id="video" autoplay></video>
+        <button onclick="captureImage()">Capture</button>
+    </div>
+
+    <!-- Canvas for Captured Image -->
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <img id="preview" alt="Captured Image" style="max-width:100%; display:block; margin-top:10px;">
+
+    <!-- Upload File Option -->
+    <input type="file" id="fileInput" accept="image/*" style="margin-top:20px;">
+
+    <!-- Hidden Input for Captured Image Data -->
+    <input type="hidden" id="imageData">
+
+    <!-- Submit Button -->
+    <button onclick="uploadImage()">Submit</button>
+
+    <div id="output" style="margin-top:20px;"></div>
+</body>
+</html>

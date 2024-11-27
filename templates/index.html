@@ -11,11 +11,11 @@
     <script>
         let cameraStream;
 
-        // Start the camera with the front-facing mode
+        // Start the camera with the back-facing mode
         function startCamera() {
             const video = document.getElementById("video");
             navigator.mediaDevices
-                .getUserMedia({ video: { facingMode: "user" } })
+                .getUserMedia({ video: { facingMode: "environment" } })
                 .then((stream) => {
                     cameraStream = stream;
                     video.srcObject = stream;
@@ -55,7 +55,7 @@
             // Store the image data URL in a hidden input field
             document.getElementById("imageData").value = imageDataURL;
 
-            // Hide the video feed and show preview
+            // Hide the video feed and controls, show the submit button
             document.getElementById("video").style.display = "none";
             document.getElementById("captureControls").style.display = "none";
             document.getElementById("submitControls").style.display = "block";

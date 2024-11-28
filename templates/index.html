@@ -6,6 +6,10 @@
     <title>Soil Type Classifier</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        #camera, #canvas {
+            width: 100%;
+            max-height: 300px;
+        }
         #loadingMessage {
             display: none;
             text-align: center;
@@ -17,13 +21,14 @@
     <div class="container mt-5">
         <h2 class="text-center">Soil and Crop Recommendation</h2>
         <div id="formSection" class="mt-4">
+            <div class="text-center mb-3">
+                <button id="startCamera" class="btn btn-success">Start Camera</button>
+                <video id="camera" autoplay muted playsinline style="display: none;"></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+                <button id="captureButton" class="btn btn-primary mt-3" style="display: none;">Capture Image</button>
+            </div>
             <div class="mb-3">
                 <input type="file" id="fileInput" class="form-control" accept="image/*">
-            </div>
-            <div class="text-center mb-3">
-                <button id="captureButton" class="btn btn-success">Capture Image</button>
-                <video id="camera" autoplay class="mt-3" style="width: 100%; max-height: 300px; display: none;"></video>
-                <canvas id="canvas" style="display: none;"></canvas>
             </div>
             <button id="submitButton" class="btn btn-primary w-100">Submit</button>
         </div>
@@ -34,6 +39,7 @@
     </div>
 
     <script>
+        const startCameraButton = document.getElementById("startCamera");
         const captureButton = document.getElementById("captureButton");
         const fileInput = document.getElementById("fileInput");
         const camera = document.getElementById("camera");
@@ -44,22 +50,34 @@
 
         let imageData = null;
 
-        captureButton.addEventListener("click", () => {
-            camera.style.display = "block";
-            navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+        // Start the camera and use the back camera when available
+        startCameraButton.addEventListener("click", async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } },
+                });
                 camera.srcObject = stream;
-            });
+                camera.style.display = "block";
+                captureButton.style.display = "inline-block";
+            } catch (error) {
+                console.error("Error starting camera:", error);
+                alert("Unable to access the camera. Please check permissions.");
+            }
         });
 
-        camera.addEventListener("click", () => {
+        // Capture the image from the camera feed
+        captureButton.addEventListener("click", () => {
             const context = canvas.getContext("2d");
             canvas.width = camera.videoWidth;
             canvas.height = camera.videoHeight;
             context.drawImage(camera, 0, 0);
             imageData = canvas.toDataURL("image/png");
             camera.style.display = "none";
+            captureButton.style.display = "none";
+            alert("Image captured successfully!");
         });
 
+        // Submit the data to the backend
         submitButton.addEventListener("click", async () => {
             const formData = new FormData();
             loadingMessage.style.display = "block";
@@ -75,7 +93,7 @@
                 return;
             }
 
-            // Add placeholder geolocation (adjust as needed)
+            // Add placeholder geolocation
             formData.append("latitude", "15.4824");
             formData.append("longitude", "73.8522");
 
@@ -97,7 +115,8 @@
                     `;
                 }
             } catch (error) {
-                alert("Error during submission: " + error.message);
+                console.error("Error during submission:", error);
+                alert("Submission failed: " + error.message);
             } finally {
                 loadingMessage.style.display = "none";
             }
@@ -105,4 +124,3 @@
     </script>
 </body>
 </html>
-

@@ -3,158 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soil Type Classifier</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Soil Classification & Crop Recommendation</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        #camera, #canvas {
+        #camera {
             width: 100%;
             max-height: 300px;
         }
-        #loadingMessage {
-            display: none;
-            text-align: center;
+        #canvas {
+            width: 100%;
+            max-height: 300px;
+        }
+        #output {
             margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h2 class="text-center">Soil and Crop Recommendation</h2>
-        <div id="formSection" class="mt-4">
-            <div class="text-center mb-3">
-                <button id="startCamera" class="btn btn-success">Start Camera</button>
-                <video id="camera" autoplay muted playsinline style="display: none;"></video>
-                <canvas id="canvas" style="display: none;"></canvas>
-                <button id="captureButton" class="btn btn-primary mt-3" style="display: none;">Capture Image</button>
-            </div>
-            <div class="mb-3">
-                <input type="file" id="fileInput" class="form-control" accept="image/*">
-            </div>
-            <button id="submitButton" class="btn btn-primary w-100">Submit</button>
+    <div class="container mt-4">
+        <h2>Soil Classification & Crop Recommendation</h2>
+        <div id="formSection">
+            <!-- Button to Start Camera -->
+            <button id="startCamera" class="btn btn-primary mt-3">Start Camera</button>
+
+            <!-- Video element for camera feed -->
+            <video id="camera" autoplay muted style="display:none;"></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+
+            <!-- Button to Capture Image -->
+            <button id="captureImage" class="btn btn-success mt-3" style="display:none;">Capture Image</button>
+            <hr>
+
+            <!-- File Upload Section -->
+            <label for="fileInput" class="form-label">Or Upload an Image:</label>
+            <input type="file" id="fileInput" accept="image/*" class="form-control mt-2">
+            <hr>
+
+            <!-- Submit Button -->
+            <button class="btn btn-primary" onclick="uploadImage()">Submit</button>
         </div>
-        <div id="loadingMessage">
-            <h5>Processing... Please wait.</h5>
-        </div>
+
+        <!-- Display Result -->
         <div id="output" class="mt-4"></div>
     </div>
 
     <script>
+        // Elements
         const startCameraButton = document.getElementById("startCamera");
-        const captureButton = document.getElementById("captureButton");
-        const fileInput = document.getElementById("fileInput");
+        const captureButton = document.getElementById("captureImage");
         const camera = document.getElementById("camera");
         const canvas = document.getElementById("canvas");
-        const submitButton = document.getElementById("submitButton");
-        const loadingMessage = document.getElementById("loadingMessage");
-        const output = document.getElementById("output");
-
+        const fileInput = document.getElementById("fileInput");
         let imageData = null;
 
-        // Start the camera and use the back camera when available
-      startCameraButton.addEventListener("click", async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
+        // Start the camera feed (back camera)
+        startCameraButton.addEventListener("click", async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" }, // Use back camera
+                });
+                camera.srcObject = stream;
+                camera.style.display = "block"; // Show the video feed
+                captureButton.style.display = "inline-block"; // Show capture button
+            } catch (error) {
+                console.error("Error accessing the camera:", error);
+                alert("Unable to access the camera. Please check permissions or try a different browser.");
+            }
         });
-        camera.srcObject = stream;
-        camera.style.display = "block";
-        captureButton.style.display = "inline-block";
-    } catch (error) {
-        console.error("Error accessing the camera:", error);
-        alert("Unable to access the camera. Please check permissions or try a different browser.");
-    }
-});
 
-captureButton.addEventListener("click", () => {
-    if (!camera.srcObject) {
-        alert("Camera is not active.");
-        return;
-    }
-    const context = canvas.getContext("2d");
-    canvas.width = camera.videoWidth;
-    canvas.height = camera.videoHeight;
-    context.drawImage(camera, 0, 0, canvas.width, canvas.height);
-    imageData = canvas.toDataURL("image/png");
-    alert("Image captured successfully!");
-});
-
-
-        // Capture the image from the camera feed
+        // Capture the image from the video feed
         captureButton.addEventListener("click", () => {
-            const context = canvas.getContext("2d");
-            canvas.width = camera.videoWidth;
-            canvas.height = camera.videoHeight;
-            context.drawImage(camera, 0, 0);
-            imageData = canvas.toDataURL("image/png");
-            camera.style.display = "none";
-            captureButton.style.display = "none";
-            alert("Image captured successfully!");
-        });
-
-        // Submit the data to the backend
-        submitButton.addEventListener("click", async () => {
-            const formData = new FormData();
-            loadingMessage.style.display = "block";
-            output.innerHTML = "";
-
-            if (imageData) {
-                formData.append("image_data", imageData);
-            } else if (fileInput.files[0]) {
-                // Resize uploaded file
-                const file = fileInput.files[0];
-                const resizedFile = await resizeImage(file);
-                formData.append("file", resizedFile);
-            } else {
-                alert("Please upload or capture an image.");
-                loadingMessage.style.display = "none";
+            if (!camera.srcObject) {
+                alert("Camera is not active.");
                 return;
             }
 
-            try {
-                const response = await fetch("/upload", {
-                    method: "POST",
-                    body: formData,
-                });
+            // Capture the image from the video feed
+            const context = canvas.getContext("2d");
+            canvas.width = camera.videoWidth;
+            canvas.height = camera.videoHeight;
+            context.drawImage(camera, 0, 0, canvas.width, canvas.height);
+            imageData = canvas.toDataURL("image/png");
+            alert("Image captured successfully!");
 
-                const data = await response.json();
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    output.innerHTML = `
-                        <h5>Results</h5>
-                        <p>Soil Type: ${data.soil_type} (Confidence: ${data.confidence.toFixed(2)}%)</p>
-                        <p>Temperature: ${data.temperature}°C</p>
-                        <p>Suitable Crops: ${data.suitable_crops.join(", ")}</p>
-                    `;
-                }
-            } catch (error) {
-                console.error("Error during submission:", error);
-                alert("Submission failed: " + error.message);
-            } finally {
-                loadingMessage.style.display = "none";
-            }
+            // Hide video feed and show canvas preview
+            camera.style.display = "none";
+            canvas.style.display = "block";
         });
 
-        // Resize image before uploading
-        function resizeImage(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement("canvas");
-                        const ctx = canvas.getContext("2d");
-                        canvas.width = 800; // Max width
-                        canvas.height = 800 * (img.height / img.width); // Preserve aspect ratio
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        canvas.toBlob(resolve, "image/jpeg", 0.8); // Reduce quality slightly
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
+        // Function to upload image (either captured or uploaded)
+        function uploadImage() {
+            const formData = new FormData();
+
+            // Check for image data or uploaded file
+            if (imageData) {
+                formData.append("image_data", imageData.split(",")[1]); // Remove data URL header
+            } else if (fileInput.files[0]) {
+                formData.append("file", fileInput.files[0]);
+            } else {
+                alert("Please capture or upload an image.");
+                return;
+            }
+
+            // Display loading message while uploading
+            document.getElementById("output").innerHTML = `<p>Uploading image...</p>`;
+
+            fetch("/upload", {
+                method: "POST",
+                body: formData,
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        // Display organized output
+                        document.getElementById("output").innerHTML = `
+                            <h5 class="text-success">Submission Successful!</h5>
+                            <p>Latitude: ${data.latitude}</p>
+                            <p>Longitude: ${data.longitude}</p>
+                            <p>Soil Type: ${data.soil_type}</p>
+                            <p>Confidence: ${data.confidence.toFixed(2)}%</p>
+                            <p>Temperature: ${data.temperature}°C</p>
+                            <p>Suitable Crops: ${data.suitable_crops.join(", ")}</p>
+                            <img src="${data.file_path}" alt="Uploaded Image" class="img-fluid mt-3">
+                        `;
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error during submission:", error);
+                    alert("An error occurred during submission.");
+                });
         }
     </script>
+
+    <!-- Bootstrap JS (optional) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
-

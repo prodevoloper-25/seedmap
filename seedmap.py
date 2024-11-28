@@ -14,15 +14,21 @@ def index():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        if "file" in request.files:
+        # Check if file upload is provided
+        if "file" in request.files and request.files["file"].filename != "":
             file = request.files["file"]
-            if file:
-                file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-                file.save(file_path)
-                latitude = request.form.get("latitude", "N/A")
-                longitude = request.form.get("longitude", "N/A")
-                return jsonify({"message": "File uploaded", "file_path": file_path, "latitude": latitude, "longitude": longitude})
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+            file.save(file_path)
+            latitude = request.form.get("latitude", "N/A")
+            longitude = request.form.get("longitude", "N/A")
+            return jsonify({
+                "message": "File uploaded successfully",
+                "file_path": "/" + file_path,
+                "latitude": latitude,
+                "longitude": longitude,
+            })
 
+        # Check if image data is provided (captured image)
         elif "image_data" in request.form:
             image_data = request.form["image_data"]
             image_data = image_data.split(",")[1]  # Remove the data URL header
@@ -32,13 +38,19 @@ def upload():
                 f.write(image_bytes)
             latitude = request.form.get("latitude", "N/A")
             longitude = request.form.get("longitude", "N/A")
-            return jsonify({"message": "Image captured", "file_path": file_path, "latitude": latitude, "longitude": longitude})
+            return jsonify({
+                "message": "Image captured successfully",
+                "file_path": "/" + file_path,
+                "latitude": latitude,
+                "longitude": longitude,
+            })
 
-        return jsonify({"error": "No image data provided"})
+        # No valid data provided
+        else:
+            return jsonify({"error": "No image data or file provided"}), 400
 
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
-

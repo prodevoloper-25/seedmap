@@ -11,7 +11,7 @@ from PIL import Image
 app = Flask(__name__)
 
 # Load the trained model
-model = tf.keras.models.load_model('../models/soil_classification_pretrained_model.h5')
+model = tf.keras.models.load_model('./models/soil_classification_pretrained_model.h5')
 
 # Dummy data generator to get class indices
 train_dir = '../data/train'

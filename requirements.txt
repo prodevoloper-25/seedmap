@@ -2,3 +2,5 @@ Flask
 requests
 Pillow
 gunicorn
+tensorflow
+numpy

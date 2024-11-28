@@ -2,5 +2,6 @@ Flask
 requests
 Pillow
 gunicorn
-tensorflow
+tensorflow-cpu
 numpy
+cv2

@@ -39,8 +39,13 @@
             <input type="file" id="fileInput" accept="image/*" class="form-control mt-2">
             <hr>
 
+            <!-- Latitude and Longitude Input -->
+            <input type="text" id="latitude" class="form-control mt-2" placeholder="Enter Latitude">
+            <input type="text" id="longitude" class="form-control mt-2" placeholder="Enter Longitude">
+            <hr>
+
             <!-- Submit Button -->
-            <button class="btn btn-primary" onclick="uploadImage()">Submit</button>
+            <button class="btn btn-primary" onclick="submitForm()">Submit</button>
         </div>
 
         <!-- Display Result -->
@@ -48,98 +53,82 @@
     </div>
 
     <script>
-        // Elements
         const startCameraButton = document.getElementById("startCamera");
         const captureButton = document.getElementById("captureImage");
         const camera = document.getElementById("camera");
         const canvas = document.getElementById("canvas");
         const fileInput = document.getElementById("fileInput");
+        const latitudeInput = document.getElementById("latitude");
+        const longitudeInput = document.getElementById("longitude");
+
         let imageData = null;
 
-        // Start the camera feed (back camera)
         startCameraButton.addEventListener("click", async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" }, // Use back camera
+                    video: { facingMode: "environment" }, 
                 });
                 camera.srcObject = stream;
-                camera.style.display = "block"; // Show the video feed
-                captureButton.style.display = "inline-block"; // Show capture button
+                camera.style.display = "block";
+                captureButton.style.display = "inline-block"; 
             } catch (error) {
-                console.error("Error accessing the camera:", error);
-                alert("Unable to access the camera. Please check permissions or try a different browser.");
+                alert("Unable to access the camera.");
             }
         });
 
-        // Capture the image from the video feed
         captureButton.addEventListener("click", () => {
-            if (!camera.srcObject) {
-                alert("Camera is not active.");
-                return;
-            }
-
-            // Capture the image from the video feed
             const context = canvas.getContext("2d");
             canvas.width = camera.videoWidth;
             canvas.height = camera.videoHeight;
             context.drawImage(camera, 0, 0, canvas.width, canvas.height);
-            imageData = canvas.toDataURL("image/png");
-            alert("Image captured successfully!");
-
-            // Hide video feed and show canvas preview
+            imageData = canvas.toDataURL("image/jpeg");
             camera.style.display = "none";
-            canvas.style.display = "block";
+            captureButton.style.display = "none";
+            fileInput.disabled = true;
         });
 
-        // Function to upload image (either captured or uploaded)
-        function uploadImage() {
-            const formData = new FormData();
+        function submitForm() {
+            const latitude = latitudeInput.value;
+            const longitude = longitudeInput.value;
+            const file = fileInput.files[0];
 
-            // Check for image data or uploaded file
-            if (imageData) {
-                formData.append("image_data", imageData.split(",")[1]); // Remove data URL header
-            } else if (fileInput.files[0]) {
-                formData.append("file", fileInput.files[0]);
-            } else {
-                alert("Please capture or upload an image.");
+            if (!latitude || !longitude || (!file && !imageData)) {
+                alert("Please provide all necessary information.");
                 return;
             }
 
-            // Display loading message while uploading
-            document.getElementById("output").innerHTML = `<p>Uploading image...</p>`;
+            const formData = new FormData();
+            formData.append("latitude", latitude);
+            formData.append("longitude", longitude);
+            if (file) {
+                formData.append("file", file);
+            } else {
+                const byteString = atob(imageData.split(',')[1]);
+                const arrayBuffer = new ArrayBuffer(byteString.length);
+                const uintArray = new Uint8Array(arrayBuffer);
+                for (let i = 0; i < byteString.length; i++) {
+                    uintArray[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([uintArray], { type: "image/jpeg" });
+                formData.append("file", blob, "captured_image.jpg");
+            }
 
             fetch("/upload", {
                 method: "POST",
-                body: formData,
+                body: formData
             })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        // Display organized output
-                        document.getElementById("output").innerHTML = `
-                            <h5 class="text-success">Submission Successful!</h5>
-                            <p>Latitude: ${data.latitude}</p>
-                            <p>Longitude: ${data.longitude}</p>
-                            <p>Soil Type: ${data.soil_type}</p>
-                            <p>Confidence: ${data.confidence.toFixed(2)}%</p>
-                            <p>Temperature: ${data.temperature}°C</p>
-                            <p>Suitable Crops: ${data.suitable_crops.join(", ")}</p>
-                            <img src="${data.file_path}" alt="Uploaded Image" class="img-fluid mt-3">
-                        `;
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error during submission:", error);
-                    alert("An error occurred during submission.");
-                });
+            .then(response => response.json())
+            .then(data => {
+                const output = document.getElementById("output");
+                output.innerHTML = `
+                    <h3>Results</h3>
+                    <p><strong>Soil Type:</strong> ${data.soil_type} (Confidence: ${data.confidence.toFixed(2)}%)</p>
+                    <p><strong>Temperature:</strong> ${data.temperature}°C</p>
+                    <p><strong>Suitable Crops:</strong> ${data.suitable_crops.join(', ')}</p>
+                `;
+            })
+            .catch(error => alert("Error processing your request"));
         }
     </script>
-
-    <!-- Bootstrap JS (optional) -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

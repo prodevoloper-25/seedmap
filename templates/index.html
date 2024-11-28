@@ -95,53 +95,68 @@
         }
 
         // Upload the image and geolocation
-        async function uploadImage() {
-            const imageData = document.getElementById("imageData").value;
-            const fileInput = document.getElementById("fileInput");
-            const position = await getGeolocation();
+       // Upload the image and geolocation
+async function uploadImage() {
+    const imageData = document.getElementById("imageData").value;
+    const fileInput = document.getElementById("fileInput");
+    let position = { latitude: "N/A", longitude: "N/A" };
 
-            const formData = new FormData();
+    try {
+        // Fetch geolocation
+        position = await getGeolocation();
+    } catch (err) {
+        console.error("Geolocation error:", err);
+    }
 
-            if (imageData) {
-                // Captured image
-                formData.append("image_data", imageData);
-            } else if (fileInput.files[0]) {
-                // Uploaded image
-                formData.append("file", fileInput.files[0]);
-            } else {
-                alert("Please capture or upload an image.");
-                return;
+    const formData = new FormData();
+
+    if (imageData) {
+        // Captured image
+        formData.append("image_data", imageData);
+    } else if (fileInput.files[0]) {
+        // Uploaded image
+        formData.append("file", fileInput.files[0]);
+    } else {
+        alert("Please capture or upload an image.");
+        return;
+    }
+
+    formData.append("latitude", position.latitude);
+    formData.append("longitude", position.longitude);
+
+    fetch("/upload", {
+        method: "POST",
+        body: formData,
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+            return response.json();
+        })
+        .then((data) => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                // Display organized output
+                document.getElementById("output").innerHTML = `
+                    <h5 class="text-success">Submission Successful!</h5>
+                    <p>Latitude: ${data.latitude}</p>
+                    <p>Longitude: ${data.longitude}</p>
+                    <img src="${data.file_path}" alt="Uploaded Image" class="img-fluid mt-3">
+                    <button class="btn btn-primary mt-3" onclick="resetForm()">Click Again</button>
+                `;
 
-            formData.append("latitude", position.latitude);
-            formData.append("longitude", position.longitude);
+                // Hide form elements after submission
+                document.getElementById("formSection").style.display = "none";
+            }
+        })
+        .catch((error) => {
+            console.error("Submission error:", error);
+            alert("An error occurred during submission: " + error.message);
+        });
+}
 
-            fetch("/upload", {
-                method: "POST",
-                body: formData,
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        // Display organized output
-                        document.getElementById("output").innerHTML = `
-                            <h5 class="text-success">Submission Successful!</h5>
-                            <p>Latitude: ${data.latitude}</p>
-                            <p>Longitude: ${data.longitude}</p>
-                            <img src="${data.file_path}" alt="Uploaded Image" class="img-fluid mt-3">
-                            <button class="btn btn-primary mt-3" onclick="resetForm()">Click Again</button>
-                        `;
-
-                        // Hide form elements after submission
-                        document.getElementById("formSection").style.display = "none";
-                    }
-                })
-                .catch((error) => {
-                    alert("An error occurred during submission: " + error.message);
-                });
-        }
 
         // Reset the form for a new capture/upload
         function resetForm() {

@@ -4,4 +4,4 @@ Pillow
 gunicorn
 tensorflow-cpu
 numpy
-cv2
+opencv-python

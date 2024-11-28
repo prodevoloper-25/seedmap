@@ -3,209 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Capture or Upload Picture</title>
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-    <script>
-        let cameraStream;
-
-        // Start the camera with the back-facing mode
-        function startCamera() {
-            const video = document.getElementById("video");
-            navigator.mediaDevices
-                .getUserMedia({ video: { facingMode: "environment" } })
-                .then((stream) => {
-                    cameraStream = stream;
-                    video.srcObject = stream;
-                })
-                .catch((err) => {
-                    alert("Unable to access the camera: " + err.message);
-                });
-        }
-
-        // Stop the camera
-        function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach((track) => track.stop());
-            }
-        }
-
-        // Capture image from the video feed
-        function captureImage() {
-            const video = document.getElementById("video");
-            const canvas = document.getElementById("canvas");
-            const context = canvas.getContext("2d");
-
-            // Set canvas dimensions to match the video feed
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            // Draw the current video frame on the canvas
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Convert canvas content to a data URL (base64 image)
-            const imageDataURL = canvas.toDataURL("image/png");
-
-            // Update the preview image
-            document.getElementById("preview").src = imageDataURL;
-            document.getElementById("preview").style.display = "block";
-
-            // Store the image data URL in a hidden input field
-            document.getElementById("imageData").value = imageDataURL;
-
-            // Hide the video feed and controls, show the submit button
-            document.getElementById("video").style.display = "none";
-            document.getElementById("captureControls").style.display = "none";
-            document.getElementById("submitControls").style.display = "block";
-
-            stopCamera();
-        }
-
-        // Show the submit button when a file is chosen
-        function handleFileInput() {
-            const fileInput = document.getElementById("fileInput");
-            if (fileInput.files.length > 0) {
-                document.getElementById("submitControls").style.display = "block";
-                document.getElementById("video").style.display = "none";
-                document.getElementById("captureControls").style.display = "none";
-                document.getElementById("preview").style.display = "none";
-            }
-        }
-
-        // Get the user's geolocation
-        async function getGeolocation() {
-            return new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    alert("Geolocation is not supported by your browser.");
-                    return reject();
-                }
-                navigator.geolocation.getCurrentPosition(
-                    (position) => resolve({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                    }),
-                    () => {
-                        alert("Unable to retrieve your location.");
-                        reject();
-                    }
-                );
-            });
-        }
-
-        // Upload the image and geolocation
-       // Upload the image and geolocation
-async function uploadImage() {
-    const imageData = document.getElementById("imageData").value;
-    const fileInput = document.getElementById("fileInput");
-    let position = { latitude: "N/A", longitude: "N/A" };
-
-    try {
-        // Fetch geolocation
-        position = await getGeolocation();
-    } catch (err) {
-        console.error("Geolocation error:", err);
-    }
-
-    const formData = new FormData();
-
-    if (imageData) {
-        // Captured image
-        formData.append("image_data", imageData);
-    } else if (fileInput.files[0]) {
-        // Uploaded image
-        formData.append("file", fileInput.files[0]);
-    } else {
-        alert("Please capture or upload an image.");
-        return;
-    }
-
-    formData.append("latitude", position.latitude);
-    formData.append("longitude", position.longitude);
-
-    fetch("/upload", {
-        method: "POST",
-        body: formData,
-    })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.error) {
-                alert(data.error);
-            } else {
-                // Display organized output
-                document.getElementById("output").innerHTML = `
-                    <h5 class="text-success">Submission Successful!</h5>
-                    <p>Latitude: ${data.latitude}</p>
-                    <p>Longitude: ${data.longitude}</p>
-                    <img src="${data.file_path}" alt="Uploaded Image" class="img-fluid mt-3">
-                    <button class="btn btn-primary mt-3" onclick="resetForm()">Click Again</button>
-                `;
-
-                // Hide form elements after submission
-                document.getElementById("formSection").style.display = "none";
-            }
-        })
-        .catch((error) => {
-            console.error("Submission error:", error);
-            alert("An error occurred during submission: " + error.message);
-        });
-}
-
-
-        // Reset the form for a new capture/upload
-        function resetForm() {
-            document.getElementById("output").innerHTML = "";
-            document.getElementById("formSection").style.display = "block";
-            document.getElementById("video").style.display = "block";
-            document.getElementById("preview").style.display = "none";
-            document.getElementById("captureControls").style.display = "block";
-            document.getElementById("submitControls").style.display = "none";
-            document.getElementById("fileInput").value = "";
-            document.getElementById("imageData").value = "";
-            startCamera();
-        }
-    </script>
+    <title>Crop Recommendation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body onload="startCamera()" class="bg-light">
-    <div class="container py-5">
-        <h1 class="text-center mb-4">Capture or Upload Picture</h1>
+<body class="bg-light">
 
-        <!-- Form Section -->
-        <div id="formSection">
-            <div class="row">
-                <!-- Camera Section -->
-                <div class="col-md-6">
-                    <h3>Capture Image</h3>
-                    <video id="video" class="w-100 border" autoplay></video>
-                    <div id="captureControls" class="mt-3">
-                        <button class="btn btn-primary" onclick="captureImage()">Capture</button>
-                    </div>
-                    <canvas id="canvas" style="display:none;"></canvas>
-                    <img id="preview" class="img-fluid mt-3" alt="Captured Image" style="display:none;">
-                    <input type="hidden" id="imageData">
-                </div>
-
-                <!-- Upload Section -->
-                <div class="col-md-6">
-                    <h3>Upload Image</h3>
-                    <input type="file" id="fileInput" class="form-control mb-3" accept="image/*" onchange="handleFileInput()">
-                </div>
-            </div>
-
-            <!-- Submit Button -->
-            <div id="submitControls" class="text-center mt-4" style="display:none;">
-                <button class="btn btn-success" onclick="uploadImage()">Submit</button>
+    <div class="container my-5">
+        <h1 class="text-center text-success mb-4">Crop Recommendation System</h1>
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Upload or Capture an Image of Soil</h5>
+                <input type="file" id="fileInput" accept="image/*" class="form-control mb-3">
+                <button class="btn btn-primary w-100" onclick="uploadImage()">Submit</button>
             </div>
         </div>
 
-        <!-- Output Section -->
-        <div id="output" class="mt-5 text-center"></div>
+        <div id="output" class="mt-5"></div>
     </div>
+
+    <script>
+        async function getGeolocation() {
+            return new Promise((resolve, reject) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => resolve(position.coords),
+                        (error) => reject(error)
+                    );
+                } else {
+                    reject(new Error("Geolocation not supported by this browser."));
+                }
+            });
+        }
+
+        async function uploadImage() {
+            const fileInput = document.getElementById("fileInput");
+            const formData = new FormData();
+
+            if (!fileInput.files[0]) {
+                alert("Please select or capture an image.");
+                return;
+            }
+
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                const position = await getGeolocation();
+                formData.append("latitude", position.latitude);
+                formData.append("longitude", position.longitude);
+            } catch (error) {
+                alert("Failed to get geolocation. Using default coordinates.");
+                formData.append("latitude", "0.0");
+                formData.append("longitude", "0.0");
+            }
+
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                    } else {
+                        document.getElementById("output").innerHTML = `
+                            <h3 class="text-success">Results</h3>
+                            <p><strong>Soil Type:</strong> ${data.soil_type} (${data.confidence.toFixed(2)}% confidence)</p>
+                            <p><strong>Temperature:</strong> ${data.temperature}°C</p>
+                            <p><strong>Recommended Crops:</strong> ${data.recommended_crops.join(", ")}</p>
+                        `;
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("An error occurred during submission.");
+                });
+        }
+    </script>
+
 </body>
 </html>
+

@@ -14,7 +14,7 @@ app = Flask(__name__)
 model = tf.keras.models.load_model('./models/soil_classification_pretrained_model.h5')
 
 # Dummy data generator to get class indices
-train_dir = '../data/train'
+train_dir = './data/train'
 train_datagen = ImageDataGenerator(rescale=1.0/255.0)
 train_generator = train_datagen.flow_from_directory(
     train_dir,

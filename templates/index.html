@@ -86,16 +86,15 @@
             if (imageData) {
                 formData.append("image_data", imageData);
             } else if (fileInput.files[0]) {
-                formData.append("file", fileInput.files[0]);
+                // Resize uploaded file
+                const file = fileInput.files[0];
+                const resizedFile = await resizeImage(file);
+                formData.append("file", resizedFile);
             } else {
                 alert("Please upload or capture an image.");
                 loadingMessage.style.display = "none";
                 return;
             }
-
-            // Add placeholder geolocation
-            formData.append("latitude", "15.4824");
-            formData.append("longitude", "73.8522");
 
             try {
                 const response = await fetch("/upload", {
@@ -121,6 +120,27 @@
                 loadingMessage.style.display = "none";
             }
         });
+
+        // Resize image before uploading
+        function resizeImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement("canvas");
+                        const ctx = canvas.getContext("2d");
+                        canvas.width = 800; // Max width
+                        canvas.height = 800 * (img.height / img.width); // Preserve aspect ratio
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        canvas.toBlob(resolve, "image/jpeg", 0.8); // Reduce quality slightly
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
     </script>
 </body>
 </html>
+

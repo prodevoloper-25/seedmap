@@ -51,19 +51,33 @@
         let imageData = null;
 
         // Start the camera and use the back camera when available
-        startCameraButton.addEventListener("click", async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { exact: "environment" } },
-                });
-                camera.srcObject = stream;
-                camera.style.display = "block";
-                captureButton.style.display = "inline-block";
-            } catch (error) {
-                console.error("Error starting camera:", error);
-                alert("Unable to access the camera. Please check permissions.");
-            }
+      startCameraButton.addEventListener("click", async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
         });
+        camera.srcObject = stream;
+        camera.style.display = "block";
+        captureButton.style.display = "inline-block";
+    } catch (error) {
+        console.error("Error accessing the camera:", error);
+        alert("Unable to access the camera. Please check permissions or try a different browser.");
+    }
+});
+
+captureButton.addEventListener("click", () => {
+    if (!camera.srcObject) {
+        alert("Camera is not active.");
+        return;
+    }
+    const context = canvas.getContext("2d");
+    canvas.width = camera.videoWidth;
+    canvas.height = camera.videoHeight;
+    context.drawImage(camera, 0, 0, canvas.width, canvas.height);
+    imageData = canvas.toDataURL("image/png");
+    alert("Image captured successfully!");
+});
+
 
         // Capture the image from the camera feed
         captureButton.addEventListener("click", () => {

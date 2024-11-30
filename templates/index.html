@@ -39,9 +39,9 @@
             <input type="file" id="fileInput" accept="image/*" class="form-control mt-2">
             <hr>
 
-            <!-- Latitude and Longitude Input -->
-            <input type="text" id="latitude" class="form-control mt-2" placeholder="Enter Latitude">
-            <input type="text" id="longitude" class="form-control mt-2" placeholder="Enter Longitude">
+            <!-- Latitude and Longitude Display -->
+            <p><strong>Latitude:</strong> <span id="latitude"></span></p>
+            <p><strong>Longitude:</strong> <span id="longitude"></span></p>
             <hr>
 
             <!-- Submit Button -->
@@ -58,24 +58,26 @@
         const camera = document.getElementById("camera");
         const canvas = document.getElementById("canvas");
         const fileInput = document.getElementById("fileInput");
-        const latitudeInput = document.getElementById("latitude");
-        const longitudeInput = document.getElementById("longitude");
+        const latitudeSpan = document.getElementById("latitude");
+        const longitudeSpan = document.getElementById("longitude");
 
         let imageData = null;
 
+        // Start the camera
         startCameraButton.addEventListener("click", async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" }, 
+                    video: { facingMode: "environment" },
                 });
                 camera.srcObject = stream;
                 camera.style.display = "block";
-                captureButton.style.display = "inline-block"; 
+                captureButton.style.display = "inline-block";
             } catch (error) {
                 alert("Unable to access the camera.");
             }
         });
 
+        // Capture the image from the camera
         captureButton.addEventListener("click", () => {
             const context = canvas.getContext("2d");
             canvas.width = camera.videoWidth;
@@ -87,9 +89,25 @@
             fileInput.disabled = true;
         });
 
+        // Get the user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    latitudeSpan.textContent = position.coords.latitude;
+                    longitudeSpan.textContent = position.coords.longitude;
+                },
+                (error) => {
+                    alert("Unable to retrieve your location.");
+                }
+            );
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
+
+        // Submit the form
         function submitForm() {
-            const latitude = latitudeInput.value;
-            const longitude = longitudeInput.value;
+            const latitude = latitudeSpan.textContent;
+            const longitude = longitudeSpan.textContent;
             const file = fileInput.files[0];
 
             if (!latitude || !longitude || (!file && !imageData)) {
@@ -102,7 +120,7 @@
             formData.append("longitude", longitude);
             if (file) {
                 formData.append("file", file);
-            } else {
+            } else if (imageData) {
                 const byteString = atob(imageData.split(',')[1]);
                 const arrayBuffer = new ArrayBuffer(byteString.length);
                 const uintArray = new Uint8Array(arrayBuffer);
@@ -115,20 +133,21 @@
 
             fetch("/upload", {
                 method: "POST",
-                body: formData
+                body: formData,
             })
-            .then(response => response.json())
-            .then(data => {
-                const output = document.getElementById("output");
-                output.innerHTML = `
-                    <h3>Results</h3>
-                    <p><strong>Soil Type:</strong> ${data.soil_type} (Confidence: ${data.confidence.toFixed(2)}%)</p>
-                    <p><strong>Temperature:</strong> ${data.temperature}°C</p>
-                    <p><strong>Suitable Crops:</strong> ${data.suitable_crops.join(', ')}</p>
-                `;
-            })
-            .catch(error => alert("Error processing your request"));
+                .then((response) => response.json())
+                .then((data) => {
+                    const output = document.getElementById("output");
+                    output.innerHTML = `
+                        <h3>Results</h3>
+                        <p><strong>Soil Type:</strong> ${data.soil_type} (Confidence: ${data.confidence.toFixed(2)}%)</p>
+                        <p><strong>Temperature:</strong> ${data.temperature}°C</p>
+                        <p><strong>Suitable Crops:</strong> ${data.suitable_crops.join(", ")}</p>
+                    `;
+                })
+                .catch((error) => alert("Error processing your request."));
         }
     </script>
 </body>
 </html>
+

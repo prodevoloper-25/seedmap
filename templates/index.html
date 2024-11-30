@@ -3,143 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soil Classification & Crop Recommendation</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        #camera {
-            width: 100%;
-            max-height: 300px;
-        }
-        #canvas {
-            display: none;
-        }
-        #output {
-            margin-top: 20px;
-        }
-    </style>
+    <title>Soil and Crop Prediction</title>
 </head>
 <body>
-    <div class="container mt-4">
-        <h2>Soil Classification & Crop Recommendation</h2>
-        <div id="formSection">
-            <!-- Camera Section -->
-            <button id="startCamera" class="btn btn-primary mt-3">Start Camera</button>
-            <video id="camera" autoplay muted style="display:none;"></video>
-            <canvas id="canvas"></canvas>
-            <button id="captureImage" class="btn btn-success mt-3" style="display:none;">Capture Image</button>
-            <hr>
-
-            <!-- File Upload Section -->
-            <label for="fileInput" class="form-label">Or Upload an Image:</label>
-            <input type="file" id="fileInput" accept="image/*" class="form-control mt-2">
-            <hr>
-
-            <!-- Geolocation -->
-            <p><strong>Latitude:</strong> <span id="latitude"></span></p>
-            <p><strong>Longitude:</strong> <span id="longitude"></span></p>
-            <hr>
-
-            <!-- Submit Button -->
-            <button class="btn btn-primary" id="submitButton">Submit</button>
-        </div>
-
-        <!-- Output -->
-        <div id="output" class="mt-4"></div>
-    </div>
-
+    <h1>Upload Soil Image</h1>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" capture="environment" required>
+        <input type="hidden" name="latitude" id="latitude">
+        <input type="hidden" name="longitude" id="longitude">
+        <button type="submit">Submit</button>
+    </form>
     <script>
-        const startCameraButton = document.getElementById("startCamera");
-        const captureButton = document.getElementById("captureImage");
-        const camera = document.getElementById("camera");
-        const canvas = document.getElementById("canvas");
-        const fileInput = document.getElementById("fileInput");
-        const submitButton = document.getElementById("submitButton");
-        const latitudeSpan = document.getElementById("latitude");
-        const longitudeSpan = document.getElementById("longitude");
-
-        let capturedImage = null;
-
-        // Start Camera
-        startCameraButton.addEventListener("click", async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" },
-                });
-                camera.srcObject = stream;
-                camera.style.display = "block";
-                captureButton.style.display = "inline-block";
-            } catch (error) {
-                alert("Camera access denied.");
-            }
-        });
-
-        // Capture Image
-        captureButton.addEventListener("click", () => {
-            const context = canvas.getContext("2d");
-            canvas.width = camera.videoWidth;
-            canvas.height = camera.videoHeight;
-            context.drawImage(camera, 0, 0, canvas.width, canvas.height);
-            capturedImage = canvas.toDataURL("image/jpeg");
-            camera.style.display = "none";
-            captureButton.style.display = "none";
-            fileInput.disabled = true;
-        });
-
-        // Get Geolocation
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    latitudeSpan.textContent = position.coords.latitude;
-                    longitudeSpan.textContent = position.coords.longitude;
-                },
-                () => alert("Unable to retrieve location.")
-            );
-        }
-
-        // Submit Form
-        submitButton.addEventListener("click", async () => {
-            const latitude = latitudeSpan.textContent;
-            const longitude = longitudeSpan.textContent;
-            const file = fileInput.files[0];
-
-            if (!latitude || !longitude || (!file && !capturedImage)) {
-                alert("All fields are required!");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("latitude", latitude);
-            formData.append("longitude", longitude);
-
-            if (file) {
-                formData.append("file", file);
-            } else if (capturedImage) {
-                const response = await fetch(capturedImage);
-                const blob = await response.blob();
-                formData.append("file", blob, "captured_image.jpg");
-            }
-
-            const output = document.getElementById("output");
-            output.innerHTML = "<p>Processing... Please wait.</p>";
-
-            fetch("/upload", {
-                method: "POST",
-                body: formData,
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    output.innerHTML = `
-                        <h3>Results</h3>
-                        <p><strong>Soil Type:</strong> ${data.soil_type} (Confidence: ${data.confidence.toFixed(2)}%)</p>
-                        <p><strong>Temperature:</strong> ${data.temperature}°C</p>
-                        <p><strong>Recommended Crops:</strong> ${data.suitable_crops.join(", ")}</p>
-                    `;
-                })
-                .catch((error) => {
-                    output.innerHTML = "<p>Error processing your request.</p>";
-                });
+        navigator.geolocation.getCurrentPosition(function(position) {
+            document.getElementById('latitude').value = position.coords.latitude;
+            document.getElementById('longitude').value = position.coords.longitude;
         });
     </script>
 </body>
 </html>
-

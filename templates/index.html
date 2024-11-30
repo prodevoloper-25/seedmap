@@ -11,8 +11,7 @@
             max-height: 300px;
         }
         #canvas {
-            width: 100%;
-            max-height: 300px;
+            display: none;
         }
         #output {
             margin-top: 20px;
@@ -23,14 +22,10 @@
     <div class="container mt-4">
         <h2>Soil Classification & Crop Recommendation</h2>
         <div id="formSection">
-            <!-- Button to Start Camera -->
+            <!-- Camera Section -->
             <button id="startCamera" class="btn btn-primary mt-3">Start Camera</button>
-
-            <!-- Video element for camera feed -->
             <video id="camera" autoplay muted style="display:none;"></video>
-            <canvas id="canvas" style="display:none;"></canvas>
-
-            <!-- Button to Capture Image -->
+            <canvas id="canvas"></canvas>
             <button id="captureImage" class="btn btn-success mt-3" style="display:none;">Capture Image</button>
             <hr>
 
@@ -39,16 +34,16 @@
             <input type="file" id="fileInput" accept="image/*" class="form-control mt-2">
             <hr>
 
-            <!-- Latitude and Longitude Display -->
+            <!-- Geolocation -->
             <p><strong>Latitude:</strong> <span id="latitude"></span></p>
             <p><strong>Longitude:</strong> <span id="longitude"></span></p>
             <hr>
 
             <!-- Submit Button -->
-            <button class="btn btn-primary" onclick="submitForm()">Submit</button>
+            <button class="btn btn-primary" id="submitButton">Submit</button>
         </div>
 
-        <!-- Display Result -->
+        <!-- Output -->
         <div id="output" class="mt-4"></div>
     </div>
 
@@ -58,12 +53,13 @@
         const camera = document.getElementById("camera");
         const canvas = document.getElementById("canvas");
         const fileInput = document.getElementById("fileInput");
+        const submitButton = document.getElementById("submitButton");
         const latitudeSpan = document.getElementById("latitude");
         const longitudeSpan = document.getElementById("longitude");
 
-        let imageData = null;
+        let capturedImage = null;
 
-        // Start the camera
+        // Start Camera
         startCameraButton.addEventListener("click", async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -73,63 +69,58 @@
                 camera.style.display = "block";
                 captureButton.style.display = "inline-block";
             } catch (error) {
-                alert("Unable to access the camera.");
+                alert("Camera access denied.");
             }
         });
 
-        // Capture the image from the camera
+        // Capture Image
         captureButton.addEventListener("click", () => {
             const context = canvas.getContext("2d");
             canvas.width = camera.videoWidth;
             canvas.height = camera.videoHeight;
             context.drawImage(camera, 0, 0, canvas.width, canvas.height);
-            imageData = canvas.toDataURL("image/jpeg");
+            capturedImage = canvas.toDataURL("image/jpeg");
             camera.style.display = "none";
             captureButton.style.display = "none";
             fileInput.disabled = true;
         });
 
-        // Get the user's location
+        // Get Geolocation
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     latitudeSpan.textContent = position.coords.latitude;
                     longitudeSpan.textContent = position.coords.longitude;
                 },
-                (error) => {
-                    alert("Unable to retrieve your location.");
-                }
+                () => alert("Unable to retrieve location.")
             );
-        } else {
-            alert("Geolocation is not supported by your browser.");
         }
 
-        // Submit the form
-        function submitForm() {
+        // Submit Form
+        submitButton.addEventListener("click", async () => {
             const latitude = latitudeSpan.textContent;
             const longitude = longitudeSpan.textContent;
             const file = fileInput.files[0];
 
-            if (!latitude || !longitude || (!file && !imageData)) {
-                alert("Please provide all necessary information.");
+            if (!latitude || !longitude || (!file && !capturedImage)) {
+                alert("All fields are required!");
                 return;
             }
 
             const formData = new FormData();
             formData.append("latitude", latitude);
             formData.append("longitude", longitude);
+
             if (file) {
                 formData.append("file", file);
-            } else if (imageData) {
-                const byteString = atob(imageData.split(',')[1]);
-                const arrayBuffer = new ArrayBuffer(byteString.length);
-                const uintArray = new Uint8Array(arrayBuffer);
-                for (let i = 0; i < byteString.length; i++) {
-                    uintArray[i] = byteString.charCodeAt(i);
-                }
-                const blob = new Blob([uintArray], { type: "image/jpeg" });
+            } else if (capturedImage) {
+                const response = await fetch(capturedImage);
+                const blob = await response.blob();
                 formData.append("file", blob, "captured_image.jpg");
             }
+
+            const output = document.getElementById("output");
+            output.innerHTML = "<p>Processing... Please wait.</p>";
 
             fetch("/upload", {
                 method: "POST",
@@ -137,16 +128,17 @@
             })
                 .then((response) => response.json())
                 .then((data) => {
-                    const output = document.getElementById("output");
                     output.innerHTML = `
                         <h3>Results</h3>
                         <p><strong>Soil Type:</strong> ${data.soil_type} (Confidence: ${data.confidence.toFixed(2)}%)</p>
                         <p><strong>Temperature:</strong> ${data.temperature}°C</p>
-                        <p><strong>Suitable Crops:</strong> ${data.suitable_crops.join(", ")}</p>
+                        <p><strong>Recommended Crops:</strong> ${data.suitable_crops.join(", ")}</p>
                     `;
                 })
-                .catch((error) => alert("Error processing your request."));
-        }
+                .catch((error) => {
+                    output.innerHTML = "<p>Error processing your request.</p>";
+                });
+        });
     </script>
 </body>
 </html>

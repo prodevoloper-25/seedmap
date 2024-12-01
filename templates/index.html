@@ -3,32 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soil and Crop Prediction</title>
+    <title>Soil and Crop Predictor</title>
 </head>
 <body>
     <h1>Soil and Crop Prediction</h1>
 
-    {% if not show_results %}
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*" capture="environment" required>
+    <!-- Form for capturing or uploading images -->
+    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+        <div>
+            <label for="cameraInput">Capture Image (Camera):</label>
+            <input type="file" id="cameraInput" name="file" accept="image/*" capture="environment">
+        </div>
+        <br>
+        <div>
+            <label for="fileInput">Upload Image (File):</label>
+            <input type="file" id="fileInput" name="file" accept="image/*">
+        </div>
+        <br>
+        <!-- Latitude and Longitude -->
         <input type="hidden" name="latitude" id="latitude">
         <input type="hidden" name="longitude" id="longitude">
-        <button type="submit">Upload</button>
+        <br>
+        <button type="submit" id="submitButton">Submit</button>
     </form>
+
+    <!-- Loading and results -->
+    <div id="loading" style="display: none;">
+        <p>Processing... Please wait.</p>
+    </div>
+
+    <div id="results" style="display: none;">
+        <h2>Prediction Results</h2>
+        <p>Soil Type: <span id="soilType"></span></p>
+        <p>Confidence: <span id="confidence"></span>%</p>
+        <p>Temperature: <span id="temperature"></span>°C</p>
+        <p>Recommended Crops: <span id="crops"></span></p>
+    </div>
+
+    <!-- Script to get geolocation -->
     <script>
-        navigator.geolocation.getCurrentPosition(function(position) {
+        // Fetch user's location
+        navigator.geolocation.getCurrentPosition(function (position) {
             document.getElementById("latitude").value = position.coords.latitude;
             document.getElementById("longitude").value = position.coords.longitude;
         });
+
+        // Show loading on form submit
+        document.getElementById("uploadForm").onsubmit = function () {
+            document.getElementById("loading").style.display = "block";
+        };
     </script>
-    {% else %}
-    <h2>Prediction Results</h2>
-    <p><strong>Soil Type:</strong> {{ soil_type }} ({{ confidence|round(2) }}%)</p>
-    <p><strong>Temperature:</strong> {{ temperature }}°C</p>
-    <p><strong>Recommended Crops:</strong> {{ recommended_crops | join(", ") }}</p>
-    <form method="GET">
-        <button type="submit">Try Again</button>
-    </form>
-    {% endif %}
 </body>
 </html>

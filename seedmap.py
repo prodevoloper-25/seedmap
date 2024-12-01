@@ -49,7 +49,7 @@ def predict_soil_type(image_path):
 
 # Function to fetch weather data
 def get_weather(lat, lon):
-    api_key = "338334a0dcbd49acb1b3dd06d9ec26f2"
+    api_key = "d062fd060c9c4a8abd5c6b2e006f08cd"
     url = f"https://api.weatherbit.io/v2.0/current?lat={lat}&lon={lon}&key={api_key}"
     response = requests.get(url)
     weather_data = response.json()

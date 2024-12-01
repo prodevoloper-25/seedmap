@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soil and Crop Predictor</title>
+    <title>SeedMap</title>
 </head>
 <body>
-    <h1>Soil and Crop Prediction</h1>
+    <h1>SEEDMAP</h1>
 
     <!-- Form for capturing or uploading images -->
     <form method="POST" enctype="multipart/form-data" id="uploadForm">
@@ -35,13 +36,15 @@
     </div>
 
     <!-- Results -->
-    <div id="results" style="display: none;">
+    {% if show_results %}
+    <div id="results">
         <h2>Prediction Results</h2>
-        <p>Soil Type: <span id="soilType"></span></p>
-        <p>Confidence: <span id="confidence"></span>%</p>
-        <p>Temperature: <span id="temperature"></span>°C</p>
-        <p>Recommended Crops: <span id="crops"></span></p>
+        <p><strong>Soil Type:</strong> {{ soil_type }}</p>
+        <p><strong>Confidence:</strong> {{ confidence }}%</p>
+        <p><strong>Temperature:</strong> {{ temperature }}°C</p>
+        <p><strong>Recommended Crops:</strong> {{ recommended_crops }}</p>
     </div>
+    {% endif %}
 
     <!-- JavaScript -->
     <script>

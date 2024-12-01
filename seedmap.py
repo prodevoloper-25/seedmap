@@ -52,7 +52,7 @@ def get_weather(lat, lon):
     api_key = "d062fd060c9c4a8abd5c6b2e006f08cd"
     url = f"https://api.weatherbit.io/v2.0/current?lat={lat}&lon={lon}&key={api_key}"
     response = requests.get(url)
-    response.raise_for_status()  # Raise exception if API call fails
+    response.raise_for_status()  # Raise an exception if the request fails
     weather_data = response.json()
     return weather_data["data"][0]["app_temp"]
 
@@ -70,11 +70,9 @@ def find_suitable_crops(temperature, soil_type):
 def index():
     if request.method == "POST":
         try:
-            # Handle uploaded file
-            if "file" not in request.files:
-                return jsonify({"error": "No file part in the request"}), 400
-            file = request.files["file"]
-            if file.filename == "":
+            # Handle uploaded file from camera or file input
+            file = request.files.get("cameraFile") or request.files.get("file")
+            if not file or file.filename == "":
                 return jsonify({"error": "No file selected"}), 400
 
             # Save the file

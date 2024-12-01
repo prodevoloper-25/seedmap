@@ -9,16 +9,16 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 # Folder to save uploaded images
-UPLOAD_FOLDER = './uploads'
+UPLOAD_FOLDER = '/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Load the trained model
-MODEL_PATH = './models/soil_classification_pretrained_model.h5'
+MODEL_PATH = 'models/soil_classification_pretrained_model.h5'
 model = tf.keras.models.load_model(MODEL_PATH)
 
 # Data directory to get class indices
-TRAIN_DIR = './data/train'
+TRAIN_DIR = 'data/train'
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 train_datagen = ImageDataGenerator(rescale=1.0 / 255.0)
 train_generator = train_datagen.flow_from_directory(
@@ -30,9 +30,15 @@ soil_classes = list(train_generator.class_indices.keys())
 crop_data = {
     "Wheat": {"temperature_range": (10, 25), "soil_type": ["clay", "loamy", "chalky"]},
     "Rice": {"temperature_range": (20, 35), "soil_type": ["clay", "silt"]},
-    "Maize": {"temperature_range": (18, 27), "soil_type": ["loamy", "sandy", "silt"]},
-    "Potato": {"temperature_range": (15, 20), "soil_type": ["sandy", "loamy"]},
-    "Cotton": {"temperature_range": (25, 35), "soil_type": ["sandy", "loamy"]},
+    "Maize": {"temperature_range": (18, 27), "soil_type": ["loamy", "silt"]},
+    "Sugarcane": {"temperature_range": (20, 30), "soil_type": ["loamy", "clay"]},
+    "Barley": {"temperature_range": (12, 25), "soil_type": ["loamy", "chalky"]},
+    "Soybean": {"temperature_range": (20, 30), "soil_type": ["loamy", "clay"]},
+    "Tomato": {"temperature_range": (18, 27), "soil_type": ["loamy", "chalky"]},
+    "Garlic": {"temperature_range": (10, 23), "soil_type": ["chalky", "loamy"]},
+    "Cabbage": {"temperature_range": (15, 22), "soil_type": ["clay", "silt"]},
+    "Lettuce": {"temperature_range": (16, 31), "soil_type": ["silt", "loamy", "chalky"]},
+    "Carrot": {"temperature_range": (15, 20), "soil_type": ["silt", "loamy"]},
 }
 
 # Function to predict soil type

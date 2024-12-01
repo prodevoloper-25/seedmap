@@ -6,18 +6,29 @@
     <title>Soil and Crop Prediction</title>
 </head>
 <body>
-    <h1>Upload Soil Image</h1>
-    <form method="post" enctype="multipart/form-data">
+    <h1>Soil and Crop Prediction</h1>
+
+    {% if not show_results %}
+    <form method="POST" enctype="multipart/form-data">
         <input type="file" name="file" accept="image/*" capture="environment" required>
         <input type="hidden" name="latitude" id="latitude">
         <input type="hidden" name="longitude" id="longitude">
-        <button type="submit">Submit</button>
+        <button type="submit">Upload</button>
     </form>
     <script>
         navigator.geolocation.getCurrentPosition(function(position) {
-            document.getElementById('latitude').value = position.coords.latitude;
-            document.getElementById('longitude').value = position.coords.longitude;
+            document.getElementById("latitude").value = position.coords.latitude;
+            document.getElementById("longitude").value = position.coords.longitude;
         });
     </script>
+    {% else %}
+    <h2>Prediction Results</h2>
+    <p><strong>Soil Type:</strong> {{ soil_type }} ({{ confidence|round(2) }}%)</p>
+    <p><strong>Temperature:</strong> {{ temperature }}°C</p>
+    <p><strong>Recommended Crops:</strong> {{ recommended_crops | join(", ") }}</p>
+    <form method="GET">
+        <button type="submit">Try Again</button>
+    </form>
+    {% endif %}
 </body>
 </html>

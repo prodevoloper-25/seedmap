@@ -52,6 +52,7 @@ def get_weather(lat, lon):
     api_key = "d062fd060c9c4a8abd5c6b2e006f08cd"
     url = f"https://api.weatherbit.io/v2.0/current?lat={lat}&lon={lon}&key={api_key}"
     response = requests.get(url)
+    response.raise_for_status()  # Raise exception if API call fails
     weather_data = response.json()
     return weather_data["data"][0]["app_temp"]
 
@@ -68,45 +69,47 @@ def find_suitable_crops(temperature, soil_type):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        # Handle uploaded file
-        if "file" not in request.files:
-            return jsonify({"error": "No file part in the request"}), 400
-        file = request.files["file"]
-        if file.filename == "":
-            return jsonify({"error": "No file selected"}), 400
+        try:
+            # Handle uploaded file
+            if "file" not in request.files:
+                return jsonify({"error": "No file part in the request"}), 400
+            file = request.files["file"]
+            if file.filename == "":
+                return jsonify({"error": "No file selected"}), 400
 
-        # Save the file
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
+            # Save the file
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
 
-        # Get latitude and longitude
-        latitude = request.form.get("latitude")
-        longitude = request.form.get("longitude")
-        if not latitude or not longitude:
-            return jsonify({"error": "Latitude or longitude not provided"}), 400
+            # Get latitude and longitude
+            latitude = request.form.get("latitude")
+            longitude = request.form.get("longitude")
+            if not latitude or not longitude:
+                return jsonify({"error": "Latitude or longitude not provided"}), 400
 
-        # Predict soil type
-        soil_type, confidence = predict_soil_type(file_path)
+            # Predict soil type
+            soil_type, confidence = predict_soil_type(file_path)
 
-        # Get weather data
-        temperature = get_weather(latitude, longitude)
+            # Get weather data
+            temperature = get_weather(latitude, longitude)
 
-        # Find suitable crops
-        recommended_crops = find_suitable_crops(temperature, soil_type)
+            # Find suitable crops
+            recommended_crops = find_suitable_crops(temperature, soil_type)
 
-        # Render results
-        return render_template(
-            "index.html",
-            soil_type=soil_type,
-            confidence=confidence,
-            temperature=temperature,
-            recommended_crops=recommended_crops,
-            show_results=True,
-        )
+            # Render results
+            return render_template(
+                "index.html",
+                soil_type=soil_type,
+                confidence=confidence,
+                temperature=temperature,
+                recommended_crops=", ".join(recommended_crops),
+                show_results=True,
+            )
+        except Exception as e:
+            return f"An error occurred: {str(e)}", 500
 
     return render_template("index.html", show_results=False)
 
 if __name__ == "__main__":
     app.run(debug=True)
-

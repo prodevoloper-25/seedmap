@@ -10,11 +10,13 @@
 
     <!-- Form for capturing or uploading images -->
     <form method="POST" enctype="multipart/form-data" id="uploadForm">
+        <!-- Camera Capture -->
         <div>
             <label for="cameraInput">Capture Image (Camera):</label>
-            <input type="file" id="cameraInput" name="file" accept="image/*" capture="environment">
+            <input type="file" id="cameraInput" name="cameraFile" accept="image/*" capture="environment">
         </div>
         <br>
+        <!-- File Upload -->
         <div>
             <label for="fileInput">Upload Image (File):</label>
             <input type="file" id="fileInput" name="file" accept="image/*">
@@ -24,14 +26,15 @@
         <input type="hidden" name="latitude" id="latitude">
         <input type="hidden" name="longitude" id="longitude">
         <br>
-        <button type="submit" id="submitButton">Submit</button>
+        <button type="submit">Submit</button>
     </form>
 
-    <!-- Loading and results -->
+    <!-- Loading Spinner -->
     <div id="loading" style="display: none;">
         <p>Processing... Please wait.</p>
     </div>
 
+    <!-- Results -->
     <div id="results" style="display: none;">
         <h2>Prediction Results</h2>
         <p>Soil Type: <span id="soilType"></span></p>
@@ -40,7 +43,7 @@
         <p>Recommended Crops: <span id="crops"></span></p>
     </div>
 
-    <!-- Script to get geolocation -->
+    <!-- JavaScript -->
     <script>
         // Fetch user's location
         navigator.geolocation.getCurrentPosition(function (position) {
@@ -48,8 +51,17 @@
             document.getElementById("longitude").value = position.coords.longitude;
         });
 
-        // Show loading on form submit
+        // Show loading spinner when submitting the form
         document.getElementById("uploadForm").onsubmit = function () {
+            const cameraInput = document.getElementById("cameraInput");
+            const fileInput = document.getElementById("fileInput");
+
+            // Validate that at least one file input is not empty
+            if (!cameraInput.value && !fileInput.value) {
+                alert("Please capture an image or select a file to upload.");
+                return false;
+            }
+
             document.getElementById("loading").style.display = "block";
         };
     </script>
